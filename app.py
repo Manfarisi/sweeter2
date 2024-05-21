@@ -2,7 +2,7 @@ import os
 from os.path import join, dirname
 from dotenv import load_dotenv
 from pymongo import MongoClient
-import jwt
+import jwts
 from datetime import datetime, timedelta
 import hashlib
 from flask import(
@@ -12,7 +12,6 @@ from flask import(
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['UPLOAD_FOLDER'] = './static/profile_pics'
 
@@ -31,17 +30,17 @@ TOKEN_KEY = 'mytoken'
 def home():
     token_receive = request.cookies.get(TOKEN_KEY)
     try:
-        payload = jwt.decode(
+        payload = jwts.decode(
             token_receive,
             SECRET_KEY,
             algorithms=['HS256']
         )
         user_info = db.users.find_one({'username': payload.get('id')})
         return render_template('index.html', user_info=user_info)
-    except jwt.ExpiredSignatureError:
+    except jwts.ExpiredSignatureError:
         msg = 'Your token has expired'
         return redirect(url_for('login', msg=msg))
-    except jwt.exceptions.DecodeError:
+    except jwts.exceptions.DecodeError:
         msg = 'There was a problem logging you in'
         return redirect(url_for('login', msg=msg))
     
@@ -56,7 +55,7 @@ def login():
 def user(username):
     token_receive = request.cookies.get(TOKEN_KEY)
     try:
-        payload = jwt.decode(
+        payload = jwts.decode(
             token_receive,
             SECRET_KEY,
             algorithms=['HS256']
@@ -69,7 +68,7 @@ def user(username):
         print('user_info',user_info)
         return render_template('user.html', user_info=user_info, status=status)
     
-    except (jwt.ExpiredSignatureError,jwt.exceptions.DecodeError):
+    except (jwts.ExpiredSignatureError,jwts.exceptions.DecodeError):
         return redirect(url_for('home'))
     
 @app.route('/sign_in', methods=['POST'])
@@ -88,7 +87,7 @@ def sign_in():
             "id": username_receive,
             "exp": datetime.utcnow() + timedelta(seconds=60 * 60 * 24),
         }
-        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+        token = jwts.encode(payload, SECRET_KEY, algorithm="HS256")
 
         return jsonify(
             {
@@ -132,7 +131,7 @@ def check_dup():
 def update_profile():
     token_receive = request.cookies.get(TOKEN_KEY)
     try:
-        payload  = jwt.decode(
+        payload  = jwts.decode(
             token_receive,
             SECRET_KEY,
             algorithms=['HS256']
@@ -159,7 +158,7 @@ def update_profile():
             {'$set' :new_doc}
         )
         return jsonify({'result': 'succcess', 'msg': 'Yp=our profile has been updated'})
-    except(jwt.ExpiredSignatureError, jwt.exceptions.DecodeError):
+    except(jwts.ExpiredSignatureError, jwts.exceptions.DecodeError):
         return redirect(url_for("home"))
 
 
@@ -167,7 +166,7 @@ def update_profile():
 def posting():
     token_receive = request.cookies.get("mytoken")
     try:
-        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
+        payload = jwts.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
         user_info = db.users.find_one({"username": payload["id"]})
         comment_receive = request.form["comment_give"]
         date_receive = request.form["date_give"]
@@ -180,7 +179,7 @@ def posting():
         }
         db.posts.insert_one(doc)
         return jsonify({"result": "success", "msg": "Posting successful!"})
-    except (jwt.ExpiredSignatureError, jwt.exceptions.DecodeError):
+    except (jwts.ExpiredSignatureError, jwts.exceptions.DecodeError):
         return redirect(url_for("home"))
 
 
@@ -188,7 +187,7 @@ def posting():
 def get_posts():
     token_receive = request.cookies.get("mytoken")
     try:
-        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
+        payload = jwts.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
         username_receive = request.args.get('username_give')
         if username_receive == '':
             posts = list(db.posts.find({}).sort("date", -1).limit(20))
@@ -209,7 +208,7 @@ def get_posts():
                 "posts": posts,
             }
         )
-    except (jwt.ExpiredSignatureError, jwt.exceptions.DecodeError):
+    except (jwts.ExpiredSignatureError, jwts.exceptions.DecodeError):
         return redirect(url_for("home"))
 
 
@@ -217,7 +216,7 @@ def get_posts():
 def update_like():
     token_receive = request.cookies.get(TOKEN_KEY)
     try:
-        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
+        payload = jwts.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
         user_info = db.users.find_one({'username': payload.get('id')})
         post_id_receive = request.form["post_id_give"]
         type_recieve = request.form['type_give']
@@ -234,7 +233,7 @@ def update_like():
         count = db.likes.count_documents({'post_id': post_id_receive, 'type': type_recieve})
         return jsonify({"result": "success", "msg": "updated!", 'count':count})
     
-    except (jwt.ExpiredSignatureError, jwt.exceptions.DecodeError):
+    except (jwts.ExpiredSignatureError, jwts.exceptions.DecodeError):
         return redirect(url_for("home"))
 
 @app.route("/about", methods=["GET"])
@@ -245,10 +244,10 @@ def about():
 def secret():
     token_receive = request.cookies.get(TOKEN_KEY)
     try:
-        payload = jwt.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
+        payload = jwts.decode(token_receive, SECRET_KEY, algorithms=["HS256"])
         user_info = db.users.find_one({'username': payload.get('id')})
         return render_template('secret.html', user_info=user_info)
-    except (jwt.ExpiredSignatureError, jwt.exceptions.DecodeError):
+    except (jwts.ExpiredSignatureError, jwts.exceptions.DecodeError):
         return redirect(url_for("home"))
 
 
